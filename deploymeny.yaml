@@ -1,0 +1,73 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: the-deployment
+  namespace: default
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      deployment: hello
+  template:
+    metadata:
+      labels:
+        deployment: hello
+    spec:
+      containers:
+        - args:
+            - -jar
+            - /opt/myapp.jar
+            - --server.port=8080
+          command:
+            - java
+          env:
+            - name: HOST_IP
+              valueFrom:
+                fieldRef:
+                  apiVersion: v1
+                  fieldPath: status.hostIP
+          image: registry.cn-hangzhou.aliyuncs.com/rookieops/myapp:latest
+          imagePullPolicy: IfNotPresent
+          lifecycle:
+            preStop:
+              exec:
+                command:
+                  - /bin/sh
+                  - -c
+                  - /bin/sleep 30
+          livenessProbe:
+            failureThreshold: 3
+            httpGet:
+              path: /hello
+              port: 8080
+              scheme: HTTP
+            initialDelaySeconds: 60
+            periodSeconds: 15
+            successThreshold: 1
+            timeoutSeconds: 1
+          name: myapp
+          ports:
+            - containerPort: 8080
+              name: http
+              protocol: TCP
+          readinessProbe:
+            failureThreshold: 3
+            httpGet:
+              path: /hello
+              port: 8080
+              scheme: HTTP
+            periodSeconds: 15
+            successThreshold: 1
+            timeoutSeconds: 1
+          resources:
+            limits:
+              cpu: "1"
+              memory: 2Gi
+            requests:
+              cpu: 100m
+              memory: 1Gi
+          terminationMessagePath: /dev/termination-log
+          terminationMessagePolicy: File
+      dnsPolicy: ClusterFirstWithHostNet
+      imagePullSecrets:
+        - name: gitlab-registry
